@@ -76,34 +76,42 @@ cd ./fileDir/organizedImgs
 read -p "Verify that files are correctly classified. Press enter to continue."
 
 for groupDir in */ ; do
-    echo __________________ $groupDir VERIFICATION ______________________________
+    echo __________________ New Document ______________________________
     for file in $groupDir/*.PDF; do
-	xdg-open $file
-	
-	read -r -n1 -p "Part of Doc? [y/l/n] " response  
-        if [[ "$response" =~ ^([yY][eE][sS]|[yY])+$ ]]
-	then
-	    echo ""
-	    fuser -s -k -TERM $file
-	elif [[ "$response" =~ ^([lL])+$ ]]
-	then
-	    echo " "
-	    fuser -s -k -TERM $file
-	    lastDir=${groupDir::-2}
-	    mv $file $lastDir
-	else
-	    fuser -s -k -TERM $file
-	    echo ""
-	    nextDir=${groupDir::-1}
-	    nextDir+=1
 
-	    if [ ! -d "$nextDir" ]; then
-		mkdir $nextDir
-	    fi
+	if [ -f $file ]; then
+	    xdg-open $file
+	
+	    read -r -n1 -p "Part of Doc? [y/l/n] " response  
+            if [[ "$response" =~ ^([yY][eE][sS]|[yY])+$ ]]
+	    then
+		echo ""
+		fuser -s -k -TERM $file
+	    elif [[ "$response" =~ ^([lL])+$ ]]
+	    then
+		echo " "
+		fuser -s -k -TERM $file
+		lastDir=${groupDir::-2}
+		mv $file $lastDir
+	    else
+		fuser -s -k -TERM $file
+		echo ""
+		nextDir=${groupDir::-1}
+		nextDir+=1
+
+		if [ ! -d "$nextDir" ]; then
+		    mkdir $nextDir
+		fi
 	    
-	    #echo Moving $file to $nextDir
-	    mv $file $nextDir
-	fi    
+		#echo Moving $file to $nextDir
+		mv $file $nextDir
+		for file2 in $groupDir/*.PDF; do
+		    if [ "$file" \< "$file2" ]; then
+			mv $file2 $nextDir
+		    fi
+		done
+	    fi      
+	fi
     done    
 done
 
@@ -121,15 +129,44 @@ for groupDir in */ ; do
 		Date=${fileDate:0:4}-${fileDate:4:2}-${fileDate:6:2}
 	       
 		../../joinPDF.sh $fileList
+      
+		newFileName="${Date}_${count}.pdf"	
+		cp finished.pdf $newFileName
 		
-		cp finished.pdf "$Date $count.pdf"
-		cp "$Date $count.pdf" ..
+		#cp "$Date $count.pdf" ..
+		cp $newFileName ..
 		((count++))
 	fi
 done
 
 cd ..
 rm -rf organizedImgs
+
+read -p "PDFs are combined. Press enter to continue."
+
+for file in ./*.pdf ; do
+    xdg-open $file
+    class=""
+    read -r -n1 -p "Where is the line? [l/r/t/b/n]" response
+    if [ "$response" == "l" ]; then
+	class="CSE2421"
+    elif [ "$response" == "r" ]; then
+	 class="CSE2331"
+    elif [ "$response" == "t" ]; then
+	 class="MATH3345"
+    elif [ "$response" == "b" ]; then
+	 class="ECE2020"
+    else
+	class="UNKNOWN" 
+    fi
+
+    fuser -s -k -TERM $file
+    newFileName="${file%%_*}"
+    newFileName+="_${class}.PDF"
+    echo $class
+    mv $file $newFileName
+    
+done
 
 echo ____Class Assignments____
 echo Math 3345 = TOP
